@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Aprobación de contenido — Agente WhatsApp SGP</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+  body { font-family: -apple-system, 'Segoe UI', Arial, sans-serif; max-width: 900px; margin: 40px auto; padding: 0 20px; color: #212529; }
+  h1 { font-size: 20px; }
+  .oculto { display: none; }
+  #login { max-width: 320px; margin: 80px auto; }
+  input { width: 100%; padding: 8px; margin: 6px 0 14px; box-sizing: border-box; }
+  button { padding: 8px 14px; border: none; border-radius: 6px; background: #2f9e44; color: white; cursor: pointer; font-size: 14px; }
+  button.secundario { background: #495057; }
+  button:disabled { background: #adb5bd; cursor: default; }
+  #error { color: #e03131; font-size: 13px; min-height: 18px; }
+  .barra { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .fragmento { border: 1px solid #dee2e6; border-radius: 8px; padding: 12px 14px; margin-bottom: 10px; }
+  .fragmento .meta { font-size: 12px; color: #495057; margin-bottom: 6px; }
+  .fragmento label { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
+  .acciones { margin-top: 16px; display: flex; gap: 10px; }
+  #vacio { color: #495057; font-style: italic; }
+</style>
+</head>
+<body>
+
+<div id="login">
+  <h1>Aprobación de contenido</h1>
+  <p>Ingresá con la cuenta que te invitaron desde Supabase.</p>
+  <input id="email" type="email" placeholder="Email" />
+  <input id="password" type="password" placeholder="Contraseña" />
+  <button id="btn-login">Ingresar</button>
+  <div id="error"></div>
+</div>
+
+<div id="panel" class="oculto">
+  <div class="barra">
+    <h1>Fragmentos pendientes de revisión</h1>
+    <button class="secundario" id="btn-logout">Salir</button>
+  </div>
+  <div id="lista"></div>
+  <div id="vacio" class="oculto">No hay nada pendiente de revisión. 🎉</div>
+  <div class="acciones">
+    <button id="btn-aprobar-sel">Aprobar seleccionados</button>
+    <button class="secundario" id="btn-aprobar-todo">Aprobar todo</button>
+  </div>
+</div>
+
+<script>
+  const SUPABASE_URL = "https://qfpbvhqisrbgvvslvpli.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_SxfWz7iYj8T92YL6AKknDw_fDQZADZt";
+  const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  const $ = (id) => document.getElementById(id);
+
+  async function mostrarSesion() {
+    const { data: { session } } = await client.auth.getSession();
+    if (session) {
+      $("login").classList.add("oculto");
+      $("panel").classList.remove("oculto");
+      await cargarPendientes();
+    } else {
+      $("login").classList.remove("oculto");
+      $("panel").classList.add("oculto");
+    }
+  }
+
+  $("btn-login").addEventListener("click", async () => {
+    $("error").textContent = "";
+    const { error } = await client.auth.signInWithPassword({
+      email: $("email").value.trim(),
+      password: $("password").value,
+    });
+    if (error) { $("error").textContent = "No se pudo ingresar: " + error.message; return; }
+    await mostrarSesion();
+  });
+
+  $("btn-logout").addEventListener("click", async () => {
+    await client.auth.signOut();
+    await mostrarSesion();
+  });
+
+  async function cargarPendientes() {
+    const { data, error } = await client.rpc("listar_fragmentos_pendientes");
+    const lista = $("lista");
+    lista.innerHTML = "";
+    if (error) { lista.innerHTML = "<p>Error al cargar: " + error.message + "</p>"; return; }
+    $("vacio").classList.toggle("oculto", data.length > 0);
+    for (const f of data) {
+      const div = document.createElement("div");
+      div.className = "fragmento";
+      div.innerHTML = `
+        <label>
+          <input type="checkbox" value="${f.id}" class="chk" />
+          <div>
+            <div class="meta">${f.tema || ""} · ${f.fuente || ""}</div>
+            <div>${(f.contenido || "").replace(/</g, "&lt;")}</div>
+          </div>
+        </label>`;
+      lista.appendChild(div);
+    }
+  }
+
+  async function aprobar(ids) {
+    const { data: { user } } = await client.auth.getUser();
+    const aprobadoPor = user?.email || "panel_web";
+    const { error } = await client.rpc("aprobar_fragmentos", { ids, aprobado_por: aprobadoPor });
+    if (error) { alert("Error al aprobar: " + error.message); return; }
+    await cargarPendientes();
+  }
+
+  $("btn-aprobar-sel").addEventListener("click", () => {
+    const ids = Array.from(document.querySelectorAll(".chk:checked")).map((c) => c.value);
+    if (ids.length === 0) { alert("Marcá al menos un fragmento."); return; }
+    aprobar(ids);
+  });
+
+  $("btn-aprobar-todo").addEventListener("click", async () => {
+    if (!confirm("¿Aprobar TODO lo pendiente?")) return;
+    const { data: { user } } = await client.auth.getUser();
+    const { error } = await client.rpc("aprobar_todo_lo_pendiente", { aprobado_por: user?.email || "panel_web" });
+    if (error) { alert("Error: " + error.message); return; }
+    await cargarPendientes();
+  });
+
+  mostrarSesion();
+</script>
+</body>
+</html>
