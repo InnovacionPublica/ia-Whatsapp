@@ -1,0 +1,12 @@
+node_modules/
+.next/
+.env
+.env.local
+.env.*.local
+*.log
+.DS_Store
+
+# El .gitignore de la raíz del repo ignora ".env.*" en general (para no
+# subir secretos); este archivo no tiene secretos (son valores públicos a
+# propósito, igual que en panel/index.html), así que se vuelve a incluir.
+!.env.example
