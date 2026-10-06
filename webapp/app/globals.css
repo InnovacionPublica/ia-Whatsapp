@@ -1,0 +1,149 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, "Segoe UI", Arial, sans-serif;
+  margin: 0;
+  color: #212529;
+  background: #f8f9fa;
+}
+
+input,
+textarea,
+select {
+  width: 100%;
+  padding: 8px;
+  margin: 4px 0 12px;
+  font-family: inherit;
+  font-size: 14px;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+}
+
+label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #343a40;
+}
+
+button {
+  padding: 8px 14px;
+  border: none;
+  border-radius: 6px;
+  background: #2f9e44;
+  color: white;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+button.secundario {
+  background: #495057;
+}
+
+button.peligro {
+  background: #e03131;
+}
+
+button:disabled {
+  background: #adb5bd;
+  cursor: default;
+}
+
+.contenedor {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 24px 20px 60px;
+}
+
+.tarjeta {
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 10px;
+  padding: 18px 20px;
+  margin-bottom: 18px;
+}
+
+.mensaje-error {
+  color: #e03131;
+  font-size: 13px;
+  min-height: 18px;
+}
+
+.mensaje-ok {
+  color: #2f9e44;
+  font-size: 13px;
+  min-height: 18px;
+}
+
+.pestanas {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.pestana {
+  padding: 10px 16px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  font-weight: 600;
+  color: #495057;
+}
+
+.pestana.activa {
+  color: #2f9e44;
+  border-bottom-color: #2f9e44;
+}
+
+.barra-superior {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.fragmento {
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+}
+
+.fragmento .meta {
+  font-size: 12px;
+  color: #495057;
+  margin-bottom: 6px;
+}
+
+.fragmento label {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  cursor: pointer;
+  font-weight: normal;
+}
+
+.ayuda {
+  font-size: 12px;
+  color: #868e96;
+  margin: -8px 0 10px;
+}
+
+.chip {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  margin-right: 6px;
+}
+
+.chip.ok {
+  background: #d3f9d8;
+  color: #2b8a3e;
+}
+
+.chip.falta {
+  background: #ffe3e3;
+  color: #c92a2a;
+}
