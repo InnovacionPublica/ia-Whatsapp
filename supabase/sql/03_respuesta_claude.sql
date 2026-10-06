@@ -2,8 +2,17 @@
 -- mensaje de sistema (con el contexto ya aprobado) y el mensaje del ciudadano.
 -- La clave se lee de Vault en el momento de la llamada
 -- (vault.decrypted_secrets, nombre 'anthropic_api_key').
+--
+-- El modelo es un parámetro con default (para no romper llamadas previas);
+-- procesar_mensaje_ciudadano pasa el modelo configurado en
+-- configuracion_agente en vez de un valor fijo.
 
-CREATE OR REPLACE FUNCTION public.generar_respuesta_claude(mensaje_sistema text, mensaje_usuario text, max_tokens integer DEFAULT 500)
+CREATE OR REPLACE FUNCTION public.generar_respuesta_claude(
+  mensaje_sistema text,
+  mensaje_usuario text,
+  max_tokens integer DEFAULT 500,
+  p_modelo text DEFAULT 'claude-haiku-4-5-20251001'
+)
  RETURNS text
  LANGUAGE plpgsql
  SECURITY DEFINER
@@ -22,7 +31,7 @@ begin
     ],
     'application/json',
     jsonb_build_object(
-      'model', 'claude-haiku-4-5-20251001',
+      'model', p_modelo,
       'max_tokens', max_tokens,
       'system', mensaje_sistema,
       'messages', jsonb_build_array(jsonb_build_object('role', 'user', 'content', mensaje_usuario))
