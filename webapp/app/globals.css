@@ -22,9 +22,15 @@ select {
 }
 
 label {
+  display: block;
   font-size: 13px;
   font-weight: 600;
   color: #343a40;
+}
+
+/* El texto de ayuda justo debajo de una etiqueta no debe pisarla. */
+label + .ayuda {
+  margin-top: 2px !important;
 }
 
 button {
