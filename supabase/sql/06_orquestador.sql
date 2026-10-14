@@ -6,8 +6,9 @@
 --   4. Pedido explícito de hablar con una persona, o señales de
 --      disconformidad -> se deriva (a "humano" si hay horario, o
 --      "pendiente" si no).
---   5. Si no hay evidencia suficiente en la base de conocimiento (similitud
---      por debajo del umbral configurado) -> se deriva igual que el punto 4.
+--   5. Si no hay evidencia suficiente en la base de conocimiento (puntaje de
+--      la búsqueda por texto por debajo del umbral configurado) -> se deriva
+--      igual que el punto 4.
 --   6. Si hay evidencia suficiente, se genera la respuesta con Claude,
 --      usando ÚNICAMENTE fragmentos ya aprobados como contexto.
 --
@@ -16,6 +17,12 @@
 -- instrucciones del sistema para Claude y el modelo usado se leen de
 -- configuracion_agente (antes estaban hardcodeados acá), para que se
 -- puedan editar desde la app de administración sin tocar código.
+--
+-- Desde el 14 de octubre de 2026, la búsqueda de evidencia usa
+-- buscar_fragmentos_texto (búsqueda por texto en español, ver
+-- 11_busqueda_texto.sql) en lugar de embeddings de Voyage. Con este motor, el
+-- umbral de confianza mide cobertura de palabras (0 a 1), no similitud
+-- semántica: conviene recalibrarlo con consultas reales.
 --
 -- Los mensajes de "sigue pendiente" / "pendiente pasa a humano" (que no
 -- forman parte de los parámetros editables pedidos) no mencionan un
@@ -33,8 +40,6 @@ declare
   v_hora_local time;
   v_en_horario boolean;
   v_texto_normalizado text;
-  v_embeddings vector[];
-  v_embedding vector(1024);
   v_mejor_id uuid;
   v_mejor_similitud float;
   v_contexto text;
@@ -119,16 +124,13 @@ begin
     return jsonb_build_object('accion', v_accion, 'respuesta', v_respuesta, 'estado_resultante', v_estado_resultante);
   end if;
 
-  -- Buscar evidencia por significado entre lo ya aprobado.
-  v_embeddings := generar_embeddings_voyage_lote(array[p_mensaje]);
-  v_embedding := v_embeddings[1];
-
+  -- Buscar evidencia por texto entre lo ya aprobado (búsqueda por palabras en español).
   select id, similitud into v_mejor_id, v_mejor_similitud
-  from buscar_fragmentos_similares(v_embedding, 3)
+  from buscar_fragmentos_texto(p_mensaje, 3)
   limit 1;
 
   if v_mejor_id is null or v_mejor_similitud < v_config.umbral_confianza then
-    v_motivo := 'No se encontró evidencia suficiente (similitud=' ||
+    v_motivo := 'No se encontró evidencia suficiente (puntaje=' ||
                 coalesce(round(v_mejor_similitud::numeric, 2)::text, '0') || ' < umbral ' || v_config.umbral_confianza || ').';
     if v_en_horario then
       update conversaciones set estado = 'humano', actualizado_en = now() where ciudadano_id = p_ciudadano_id;
@@ -148,24 +150,18 @@ begin
 
   -- Hay evidencia suficiente: se genera la respuesta con Claude, usando
   -- ÚNICAMENTE contenido ya aprobado (estado = 'activo') como contexto.
-  select string_agg('- ' || contenido, E'
-
-' order by similitud desc)
+  select string_agg('- ' || contenido, E'\n\n' order by similitud desc)
   into v_contexto
-  from buscar_fragmentos_similares(v_embedding, 3);
+  from buscar_fragmentos_texto(p_mensaje, 3);
 
-  v_sistema := v_config.instrucciones_sistema || E'
-
-Contexto:
-' || v_contexto;
+  v_sistema := v_config.instrucciones_sistema || E'\n\nContexto:\n' || v_contexto;
 
   v_respuesta := generar_respuesta_claude(v_sistema, p_mensaje, 500, v_config.modelo_claude);
 
   insert into interacciones (ciudadano_id, mensaje, accion, respuesta, fragmento_usado_id, score, motivo, estado_resultante)
   values (p_ciudadano_id, p_mensaje, 'respondido_ia', v_respuesta, v_mejor_id, v_mejor_similitud,
-          'Evidencia suficiente encontrada (similitud=' || round(v_mejor_similitud::numeric, 2) || ').', 'ia');
+          'Evidencia suficiente encontrada (puntaje=' || round(v_mejor_similitud::numeric, 2) || ').', 'ia');
 
   return jsonb_build_object('accion', 'respondido_ia', 'respuesta', v_respuesta, 'estado_resultante', 'ia');
 end;
-$function$
-;
+$function$;
