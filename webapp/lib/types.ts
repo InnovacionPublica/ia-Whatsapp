@@ -21,7 +21,7 @@ export type ConfiguracionAgente = {
 };
 
 export type EstadoCredencial = {
-  nombre: "meta_whatsapp_token" | "meta_phone_number_id" | "meta_verify_token";
+  nombre: "meta_whatsapp_token" | "meta_phone_number_id" | "meta_verify_token" | "meta_app_secret";
   cargada: boolean;
 };
 
@@ -50,5 +50,11 @@ export const NOMBRES_CREDENCIALES_META: {
     nombre: "meta_verify_token",
     etiqueta: "Token de verificación del webhook",
     ayuda: "Un texto que vos elegís y que también se configura en Meta al dar de alta el webhook.",
+  },
+  {
+    nombre: "meta_app_secret",
+    etiqueta: "Clave secreta de la app (App Secret)",
+    ayuda:
+      "En Meta for Developers: Configuración de la app → Básica → Clave secreta de la app. Se usa para comprobar que cada mensaje recibido realmente viene de Meta. Sin ella, el webhook rechaza todos los mensajes.",
   },
 ];
