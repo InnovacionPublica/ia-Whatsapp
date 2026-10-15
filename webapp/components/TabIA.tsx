@@ -33,6 +33,15 @@ export default function TabIA() {
   const [mensajeHorario, setMensajeHorario] = useState("");
   const [mensajeFueraHorario, setMensajeFueraHorario] = useState("");
 
+  // Modo pruebas (tiene su propio botón de guardado).
+  const [modoPruebas, setModoPruebas] = useState(true);
+  const [palabraActivacion, setPalabraActivacion] = useState("#prueba");
+  const [palabraSalida, setPalabraSalida] = useState("#salir");
+  const [horasActivacion, setHorasActivacion] = useState("24");
+  const [guardandoModo, setGuardandoModo] = useState(false);
+  const [errorModo, setErrorModo] = useState("");
+  const [mensajeModo, setMensajeModo] = useState("");
+
   useEffect(() => {
     (async () => {
       setCargando(true);
@@ -57,8 +66,46 @@ export default function TabIA() {
       setFrasesDisconf(arrayATexto(c.frases_disconformidad));
       setMensajeHorario(c.mensaje_derivacion_horario);
       setMensajeFueraHorario(c.mensaje_derivacion_fuera_horario);
+      setModoPruebas(c.modo_pruebas ?? true);
+      setPalabraActivacion(c.palabra_activacion ?? "#prueba");
+      setPalabraSalida(c.palabra_salida ?? "#salir");
+      setHorasActivacion(String(c.horas_activacion ?? 24));
     })();
   }, []);
+
+  async function guardarModoPruebas() {
+    setErrorModo("");
+    setMensajeModo("");
+    const horas = parseInt(horasActivacion, 10);
+    if (isNaN(horas) || horas < 1 || horas > 168) {
+      setErrorModo("La duración tiene que ser un número entero de horas entre 1 y 168.");
+      return;
+    }
+    if (!palabraActivacion.trim() || !palabraSalida.trim()) {
+      setErrorModo("La palabra de activación y la de salida no pueden quedar vacías.");
+      return;
+    }
+    setGuardandoModo(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data, error } = await supabase.rpc("guardar_modo_pruebas", {
+      p_modo_pruebas: modoPruebas,
+      p_palabra_activacion: palabraActivacion,
+      p_palabra_salida: palabraSalida,
+      p_horas_activacion: horas,
+      p_actualizado_por: user?.email || "panel_admin",
+    });
+    setGuardandoModo(false);
+    if (error) {
+      setErrorModo("No se pudo guardar: " + error.message);
+      return;
+    }
+    setConfig(data as ConfiguracionAgente);
+    setMensajeModo(
+      modoPruebas
+        ? "Modo pruebas guardado: ENCENDIDO. Solo responde a quienes escriban la palabra de activación."
+        : "Modo pruebas guardado: APAGADO. El agente responde a cualquier persona que escriba."
+    );
+  }
 
   async function guardar() {
     setError("");
@@ -106,6 +153,37 @@ export default function TabIA() {
 
   return (
     <div>
+      <div className="tarjeta">
+        <h2 style={{ fontSize: 16, marginTop: 0 }}>Modo pruebas</h2>
+        <p className="ayuda">
+          Con el modo pruebas encendido, el agente no le responde a nadie
+          hasta que esa persona escribe la palabra de activación. A quien
+          escribe sin activar no se le responde ni se guarda el contenido de
+          su mensaje. Para abrir el servicio al público, apagalo. Este bloque
+          se guarda con su propio botón y se aplica al próximo mensaje.
+        </p>
+        <label>
+          <input
+            type="checkbox"
+            checked={modoPruebas}
+            onChange={(e) => setModoPruebas(e.target.checked)}
+            style={{ width: "auto", marginRight: 8 }}
+          />
+          Modo pruebas encendido
+        </label>
+        <label>Palabra de activación</label>
+        <input value={palabraActivacion} onChange={(e) => setPalabraActivacion(e.target.value)} />
+        <label>Palabra de salida</label>
+        <input value={palabraSalida} onChange={(e) => setPalabraSalida(e.target.value)} />
+        <label>Duración de la activación (horas, de 1 a 168)</label>
+        <input value={horasActivacion} onChange={(e) => setHorasActivacion(e.target.value)} />
+        <button onClick={guardarModoPruebas} disabled={guardandoModo}>
+          {guardandoModo ? "Guardando..." : "Guardar modo pruebas"}
+        </button>
+        <div className="mensaje-error">{errorModo}</div>
+        <div className="mensaje-ok">{mensajeModo}</div>
+      </div>
+
       <div className="tarjeta">
         <h2 style={{ fontSize: 16, marginTop: 0 }}>Instrucciones del sistema</h2>
         <p className="ayuda">
